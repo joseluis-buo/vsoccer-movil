@@ -1,56 +1,125 @@
-# Welcome to your Expo app 👋
+# VIVA SOCCER Móvil
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App móvil (React Native + Expo) de la escuela de fútbol infantil VIVA SOCCER.
+Consume la API REST del proyecto hermano `viva_soccer` (Django). Las reglas del
+proyecto están en [CLAUDE.md](CLAUDE.md).
 
-## Get started
+## Estado actual
 
-1. Install dependencies
+- Navegación con expo-router en tres zonas: comunes, `(entrenador)` y `(familia)`.
+- Inicio de sesión (02) y activación de cuenta (03) funcionando contra la API.
+- La sesión sobrevive a cerrar la app y el token se renueva solo.
+- Las demás pantallas están vacías: solo muestran su número y título.
 
-   ```bash
-   npm install
-   ```
+## Estructura
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+  app/                 rutas (cada archivo es una pantalla)
+    _layout.tsx        decide qué zona se puede ver según la sesión
+    index.tsx          manda a login, al modo Entrenador o al modo Familia
+    (comunes)/         02 login · 03 activar
+    (entrenador)/      pestañas Inicio · Grupos · Sincronizar · Perfil
+    (familia)/         pestañas Hijos · Progreso · Avisos · Perfil
+  api/cliente.ts       ÚNICO punto por donde pasan las peticiones a la API
+  api/autenticacion.ts POST /token/ y POST /activar/
+  sesion/              tokens en SecureStore, modos y contexto de sesión
+  components/          botones, campos y piezas reutilizables
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+## Apuntar la app al backend
 
-### Other setup steps
+La URL de la API **no está escrita en el código**. `app.config.ts` la lee de la
+variable `API_URL`, y Expo carga esa variable del archivo `.env.local`
+(que no se sube a git).
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+cp .env.example .env.local
+```
 
-## Learn more
+### Por qué `localhost` no sirve desde el teléfono
 
-To learn more about developing your project with Expo, look at the following resources:
+`localhost` siempre significa "esta misma máquina". En la computadora apunta a
+la computadora, pero **en el teléfono apunta al propio teléfono**, donde no hay
+ningún Django corriendo. Por eso la app tiene que usar la IP de la computadora
+en la red Wi-Fi, y Django tiene que aceptar conexiones de toda la red, no solo
+de sí mismo.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+1. Saca la IP de la computadora:
 
-## Join the community
+   ```bash
+   hostname -I          # Linux: la primera, p. ej. 192.168.0.201
+   ipconfig getifaddr en0   # macOS
+   ipconfig             # Windows: "Dirección IPv4"
+   ```
 
-Join our community of developers creating universal apps.
+2. Ponla en `.env.local`:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+   ```
+   API_URL=http://192.168.0.201:8000/api/v1/
+   ```
+
+3. Arranca Django escuchando en toda la red **y permitiendo esa IP**. Por
+   defecto el backend solo acepta `127.0.0.1` y `localhost`; si no agregas la
+   IP, Django responde `400 Bad Request` y la app muestra
+   "El servidor respondió 400 sin más detalle".
+
+   ```bash
+   # en la carpeta del backend
+   DJANGO_ALLOWED_HOSTS=192.168.0.201,localhost,127.0.0.1 python manage.py runserver 0.0.0.0:8000
+   ```
+
+   (o agrega `DJANGO_ALLOWED_HOSTS=...` al `.env` del backend).
+
+4. El teléfono y la computadora deben estar en la **misma red Wi-Fi**. Prueba
+   desde el navegador del teléfono: `http://192.168.0.201:8000/api/v1/token/`
+   debe abrir una página de Django REST Framework (aunque diga
+   "Method GET not allowed", eso significa que sí llega). Si no carga, revisa
+   el firewall de la computadora (puerto 8000).
+
+Si cambias `.env.local`, reinicia `npx expo start` para que tome el valor.
+
+### Cuando el backend esté en Railway
+
+Solo cambia la variable:
+
+```
+API_URL=https://vivasoccer.up.railway.app/api/v1/
+```
+
+Para un APK de EAS, la variable se define en el perfil de `eas.json`
+(`"env": { "API_URL": "..." }`) o como variable del proyecto en expo.dev.
+
+## Correr la app
+
+```bash
+npm install
+npx expo start              # QR para Expo Go
+npx expo start --tunnel     # si el teléfono no está en la misma red (solo el bundle; la API sigue necesitando IP alcanzable)
+npx expo start --android    # emulador
+```
+
+La vista web (`npx expo start --web`) sirve para ver el diseño de las
+pantallas, pero **no para iniciar sesión**: SecureStore no existe en el
+navegador y el backend no tiene CORS habilitado.
+
+## Usuarios de prueba
+
+Los crea `python manage.py seed_demo` en el backend:
+
+| Usuario      | Contraseña   | Entra a        |
+| ------------ | ------------ | -------------- |
+| `entrenador` | `entrenador` | Modo Entrenador |
+| `5512345678` | `tutor`      | Modo Familia    |
+| `admin`      | `admin`      | Modo Entrenador |
+| `secretaria` | `secretaria` | No entra: la app le indica que use el sistema web |
+
+`seed_demo` imprime también un código de activación sin canjear (vence a los
+7 días).
+
+## Verificar antes de entregar
+
+```bash
+npx tsc --noEmit
+npx expo lint
+```

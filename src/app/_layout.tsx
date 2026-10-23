@@ -1,18 +1,48 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { Colores } from '@/constants/colores';
+import { SesionProvider, useSesion } from '@/sesion/SesionContext';
 
+// El splash (01) se queda visible hasta saber si hay sesión guardada.
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function LayoutRaiz() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <SesionProvider>
+      <StatusBar style="dark" />
+      <Navegacion />
+    </SesionProvider>
+  );
+}
+
+// Tres zonas: comunes (sin sesión), entrenador y familia. Cada Stack.Protected
+// solo deja entrar si su condición se cumple; cuando la sesión cambia (entrar,
+// cerrar sesión, cambiar de modo) expo-router saca al usuario de la zona que
+// ya no le toca y lo manda a index, que decide a dónde ir.
+function Navegacion() {
+  const { cargando, perfil } = useSesion();
+
+  useEffect(() => {
+    if (!cargando) SplashScreen.hideAsync();
+  }, [cargando]);
+
+  if (cargando) return null;
+
+  return (
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colores.fondo } }}>
+      <Stack.Screen name="index" />
+      <Stack.Protected guard={!perfil}>
+        <Stack.Screen name="(comunes)" />
+      </Stack.Protected>
+      <Stack.Protected guard={perfil?.modo === 'entrenador'}>
+        <Stack.Screen name="(entrenador)" />
+      </Stack.Protected>
+      <Stack.Protected guard={perfil?.modo === 'familia'}>
+        <Stack.Screen name="(familia)" />
+      </Stack.Protected>
+    </Stack>
   );
 }
