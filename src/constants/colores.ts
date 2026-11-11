@@ -11,4 +11,7 @@ export const Colores = {
   borde: '#DCD3EE',
   error: '#B3261E',
   fondoError: '#FCEBEA',
+  // Tercera línea de la gráfica de progresión (Tiro): se distingue del morado
+  // y del menta, y se lee sobre blanco.
+  naranja: '#C2410C',
 } as const;

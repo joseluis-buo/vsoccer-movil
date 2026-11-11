@@ -42,7 +42,12 @@ no pueda sostener frente al profesor.
 4. **Nada de URLs ni llaves quemadas en el código.** La URL de la API sale de
    `app.config.ts` y variables de entorno.
 5. **El token va en SecureStore**, nunca en AsyncStorage ni en estado
-   persistido a disco.
+   persistido a disco. Única excepción, a propósito: en el navegador
+   (`npx expo start --web`) SecureStore no existe y se usa `localStorage`.
+   La versión web es solo para desarrollo y ahí el token queda menos
+   protegido; en el teléfono siempre es SecureStore. La elección por
+   plataforma vive en `src/sesion/almacen.ts`: no se "arregla" quitando el
+   caso web, ni se usa `localStorage` fuera de la web.
 6. **La app no decide permisos.** No se esconden datos con `if` en pantalla: se
    piden a la API, que ya filtra por rol.
 7. **Renovación invisible.** El access token dura 15 minutos. Ante un 401, el

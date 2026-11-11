@@ -99,9 +99,12 @@ npx expo start --tunnel     # si el teléfono no está en la misma red (solo el 
 npx expo start --android    # emulador
 ```
 
-La vista web (`npx expo start --web`) sirve para ver el diseño de las
-pantallas, pero **no para iniciar sesión**: SecureStore no existe en el
-navegador y el backend no tiene CORS habilitado.
+La vista web (`npx expo start --web`) sirve para armar pantallas rápido, y
+también se puede iniciar sesión (el backend permite CORS desde el puerto 8081
+en desarrollo). Ahí el token se guarda en `localStorage` porque SecureStore no
+existe en el navegador: es menos seguro y **solo es para desarrollo**. En el
+teléfono siempre se usa SecureStore. La cola sin conexión y el push no
+funcionan en web.
 
 ## Usuarios de prueba
 

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 import type { DatosDeSesion } from '@/api/autenticacion';
 import { alTerminarSesion } from '@/api/cliente';
+import { olvidarHistoriales } from '@/api/familia';
 
 import {
   borrarSesion,
@@ -34,7 +35,10 @@ export function SesionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Si el cliente de la API no logra renovar el token, regresa al login.
-    alTerminarSesion(() => setPerfil(null));
+    alTerminarSesion(() => {
+      olvidarHistoriales();
+      setPerfil(null);
+    });
     restaurarSesion()
       .then(setPerfil)
       .finally(() => setCargando(false));
@@ -61,6 +65,7 @@ export function SesionProvider({ children }: { children: ReactNode }) {
   }
 
   async function cerrarSesion() {
+    olvidarHistoriales();
     await borrarSesion();
     setPerfil(null);
   }
