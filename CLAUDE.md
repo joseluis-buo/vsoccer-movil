@@ -23,7 +23,9 @@ no pueda sostener frente al profesor.
 
 - React Native + **Expo** con **TypeScript**
 - **expo-router** para la navegación
-- `expo-sqlite` — cola de captura sin conexión
+- `expo-sqlite` — cola de captura sin conexión y copia local de grupos y
+  alumnos (para abrirlos sin señal)
+- `expo-network` — avisa cuando vuelve la red, para enviar la cola sola
 - `expo-secure-store` — tokens JWT
 - `expo-notifications` — notificaciones push
 - Gráficas: librería ligera de RN; si pesa de más, se dibuja con SVG
@@ -154,15 +156,28 @@ La app entonces apunta a `http://<esa-ip>:8000/api/v1/`.
 npm install
 npx expo start              # QR para Expo Go
 npx expo start --tunnel     # si el teléfono no está en la misma red
-npx expo start --web        # navegador; ojo: sin SQLite ni push
+npx expo start --web        # navegador: SQLite sí (en localhost:8081), push no
 npx expo start --android    # emulador
 
 npx eas build -p android --profile preview   # APK instalable
 ```
 
-**La vista web no sirve para probar la cola sin conexión ni las
-notificaciones**: `expo-sqlite` y el push solo funcionan en el teléfono. Sirve
-para ir armando pantallas rápido.
+**En la vista web sí se puede probar la cola sin conexión** (ya se probó
+completa: captura sin red, sobrevive al F5, se envía sola al volver la señal,
+no se mezcla entre usuarios y maneja el 409). Para que funcione:
+
+- Abrir en `http://localhost:8081`, **no con la IP**: SQLite en el navegador
+  solo funciona en localhost o HTTPS. Y en **una sola pestaña**.
+- `metro.config.js` sirve el `.wasm` de SQLite y las cabeceras
+  `Cross-Origin-*`; no quitarlo.
+- "Sin red" se simula de dos formas, y **son casos distintos**:
+  - DevTools → Network → **Offline**: el navegador avisa que se fue la red
+    (evento `offline`). Así se prueba el **envío automático** al volver.
+  - **Apagar Django**: el teléfono "tiene red" pero la API no contesta. No hay
+    evento de red; la cola sale con la primera petición que vuelve a
+    funcionar (p. ej. "Intentar de nuevo" en la lista guardada).
+
+Las **notificaciones push** no funcionan en web: se prueban en el teléfono.
 
 ## Usuarios de prueba
 
