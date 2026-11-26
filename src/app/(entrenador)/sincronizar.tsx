@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { quitarDeCola } from '@/cola/cola';
-import { enviarPendientes, textoDelResumen } from '@/cola/envio';
 import { useCola } from '@/cola/useCola';
+import { useEnvioManual } from '@/cola/useEnvioManual';
 import { AvisoError } from '@/components/AvisoError';
 import { Boton } from '@/components/Boton';
 import { FilaCola } from '@/components/entrenador/FilaCola';
@@ -14,25 +13,12 @@ import { Colores } from '@/constants/colores';
 // Pestaña Sincronizar: lo que está guardado en el teléfono y no ha llegado
 // al servidor. Las pendientes se reintentan; las rechazadas se descartan.
 export default function PantallaSincronizar() {
-  const { usuario, pendientes, rechazadas, error, recargar } = useCola();
-  const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<string | null>(null);
+  const { usuario, pendientes, rechazadas, error } = useCola();
+  const { enviando, resultado, enviar } = useEnvioManual(usuario, pendientes.length);
 
-  async function reintentarTodas() {
-    setEnviando(true);
-    setResultado(null);
-    try {
-      setResultado(textoDelResumen(await enviarPendientes(usuario)));
-    } catch (e) {
-      setResultado(`No se pudo enviar: ${(e as Error).message}`);
-    }
-    setEnviando(false);
-    recargar();
-  }
-
+  // La cola avisa del cambio y la lista se actualiza sola.
   async function descartar(clientUuid: string) {
     await quitarDeCola(usuario, clientUuid).catch(() => {});
-    recargar();
   }
 
   return (
@@ -53,7 +39,7 @@ export default function PantallaSincronizar() {
         {pendientes.length > 0 && (
           <>
             <Text style={estilos.seccion}>PENDIENTES DE ENVIAR ({pendientes.length})</Text>
-            <Boton titulo="Reintentar todas" onPress={reintentarTodas} cargando={enviando} />
+            <Boton titulo="Reintentar todas" onPress={enviar} cargando={enviando} />
             {pendientes.map((evaluacion) => (
               <FilaCola key={evaluacion.client_uuid} evaluacion={evaluacion} />
             ))}

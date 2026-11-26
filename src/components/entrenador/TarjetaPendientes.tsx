@@ -1,45 +1,39 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { enviarPendientes, textoDelResumen } from '@/cola/envio';
 import { useCola } from '@/cola/useCola';
+import { useEnvioManual } from '@/cola/useEnvioManual';
 import { Colores } from '@/constants/colores';
 
 // Tarjeta del Inicio (04): "Evaluaciones pendientes de sincronizar · Enviar".
-// Solo aparece si hay algo en la cola. Tocarla lleva a Sincronizar.
+// Solo aparece si hay algo en la cola. Tocar el texto lleva a Sincronizar.
 export function TarjetaPendientes() {
-  const { usuario, pendientes, rechazadas, recargar } = useCola();
-  const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<string | null>(null);
+  const { usuario, pendientes, rechazadas } = useCola();
+  const { enviando, resultado, enviar } = useEnvioManual(usuario, pendientes.length);
 
   if (pendientes.length === 0 && rechazadas.length === 0 && !resultado) return null;
 
-  async function enviar() {
-    setEnviando(true);
-    try {
-      setResultado(textoDelResumen(await enviarPendientes(usuario)));
-    } catch (e) {
-      setResultado(`No se pudo enviar: ${(e as Error).message}`);
-    }
-    setEnviando(false);
-    recargar();
-  }
+  const irASincronizar = () => router.push('/sincronizar');
 
+  // La tarjeta es un View con dos zonas que se tocan por separado (ver y
+  // "Enviar"). Si la tarjeta entera fuera un botón, "Enviar" quedaría como un
+  // botón dentro de otro, y en web eso es HTML inválido (<button> en <button>).
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Ver evaluaciones guardadas en el teléfono"
-      onPress={() => router.push('/sincronizar')}
-      style={({ pressed }) => [estilos.tarjeta, pressed && estilos.presionada]}>
+    <View style={estilos.tarjeta}>
       <View style={estilos.fila}>
-        <View style={estilos.numero}>
-          <Text style={estilos.numeroTexto}>{pendientes.length}</Text>
-        </View>
-        <View style={estilos.textos}>
-          <Text style={estilos.titulo}>Evaluaciones pendientes de sincronizar</Text>
-          <Text style={estilos.nota}>Guardadas en el teléfono</Text>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Ver evaluaciones guardadas en el teléfono"
+          onPress={irASincronizar}
+          style={({ pressed }) => [estilos.ver, pressed && estilos.presionada]}>
+          <View style={estilos.numero}>
+            <Text style={estilos.numeroTexto}>{pendientes.length}</Text>
+          </View>
+          <View style={estilos.textos}>
+            <Text style={estilos.titulo}>Evaluaciones pendientes de sincronizar</Text>
+            <Text style={estilos.nota}>Guardadas en el teléfono</Text>
+          </View>
+        </Pressable>
         {pendientes.length > 0 && (
           <Pressable
             accessibilityRole="button"
@@ -58,13 +52,15 @@ export function TarjetaPendientes() {
       </View>
 
       {rechazadas.length > 0 && (
-        <Text style={estilos.rechazadas}>
-          {rechazadas.length} {rechazadas.length === 1 ? 'rechazada' : 'rechazadas'} por el servidor: toca para
-          revisar
-        </Text>
+        <Pressable accessibilityRole="link" onPress={irASincronizar} style={estilos.enlace}>
+          <Text style={estilos.rechazadas}>
+            {rechazadas.length} {rechazadas.length === 1 ? 'rechazada' : 'rechazadas'} por el servidor: toca para
+            revisar
+          </Text>
+        </Pressable>
       )}
       {resultado && <Text style={estilos.resultado}>{resultado}</Text>}
-    </Pressable>
+    </View>
   );
 }
 
@@ -80,6 +76,8 @@ const estilos = StyleSheet.create({
   },
   presionada: { opacity: 0.8 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  ver: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
+  enlace: { minHeight: 48, justifyContent: 'center' },
   numero: {
     width: 44,
     height: 44,
