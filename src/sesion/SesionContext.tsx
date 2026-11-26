@@ -11,6 +11,7 @@ import {
   leerPerfil,
   leerRefresh,
   tokenVigente,
+  usuarioDelToken,
   type Perfil,
 } from './almacen';
 import { modoInicial, modosDisponibles, type Modo } from './modos';
@@ -49,7 +50,11 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     if (!modo) {
       throw new Error('Tu cuenta no tiene acceso a la app móvil. Usa el sistema web de la escuela.');
     }
-    const nuevo: Perfil = { nombre: datos.nombre, rol: datos.rol, roles: datos.roles, modo };
+    const usuario = usuarioDelToken(datos.access);
+    if (!usuario) {
+      throw new Error('El servidor respondió un token sin usuario. Intenta de nuevo.');
+    }
+    const nuevo: Perfil = { usuario, nombre: datos.nombre, rol: datos.rol, roles: datos.roles, modo };
     await guardarTokens(datos.access, datos.refresh);
     await guardarPerfil(nuevo);
     setPerfil(nuevo);
@@ -95,7 +100,12 @@ async function restaurarSesion(): Promise<Perfil | null> {
   try {
     const refresh = await leerRefresh();
     const perfil = await leerPerfil();
-    if (refresh && perfil && tokenVigente(refresh)) return perfil;
+    if (refresh && perfil && tokenVigente(refresh)) {
+      // Las sesiones guardadas antes de que existiera la cola no traían el
+      // usuario; se saca del refresh, que también lo lleva.
+      const usuario = perfil.usuario ?? usuarioDelToken(refresh);
+      if (usuario) return { ...perfil, usuario };
+    }
   } catch {
     // Datos ilegibles: se tratan como si no hubiera sesión.
   }

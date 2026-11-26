@@ -103,8 +103,10 @@ La vista web (`npx expo start --web`) sirve para armar pantallas rápido, y
 también se puede iniciar sesión (el backend permite CORS desde el puerto 8081
 en desarrollo). Ahí el token se guarda en `localStorage` porque SecureStore no
 existe en el navegador: es menos seguro y **solo es para desarrollo**. En el
-teléfono siempre se usa SecureStore. La cola sin conexión y el push no
-funcionan en web.
+teléfono siempre se usa SecureStore. La cola sin conexión (expo-sqlite)
+también funciona en web gracias a `metro.config.js`, siempre que se abra en
+`http://localhost:8081` (no con la IP) y en una sola pestaña. El push no
+funciona en web.
 
 ## Usuarios de prueba
 

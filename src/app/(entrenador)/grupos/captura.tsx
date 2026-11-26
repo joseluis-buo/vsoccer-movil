@@ -4,24 +4,34 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ErrorApi } from '@/api/cliente';
-import { enviarEvaluacion, MAX_OBSERVACIONES } from '@/api/entrenador';
+import { MAX_OBSERVACIONES, type NuevaEvaluacion } from '@/api/entrenador';
+import { guardarEnCola, quitarDeCola } from '@/cola/cola';
+import { enviarDeLaCola, type ResultadoEnvio } from '@/cola/envio';
 import { AvisoError } from '@/components/AvisoError';
 import { Boton } from '@/components/Boton';
 import { BotonRegresar } from '@/components/BotonRegresar';
 import { SelectorCalificacion } from '@/components/entrenador/SelectorCalificacion';
 import { Colores } from '@/constants/colores';
+import { useSesion } from '@/sesion/SesionContext';
 import { fechaDeHoy, formatearFecha } from '@/utils/fechas';
 
 type Problema = { titulo: string; mensaje: string };
 
 // 06 · Captura de evaluación
 export default function PantallaCaptura() {
-  const params = useLocalSearchParams<{ alumno: string; nombre: string; grupoNombre?: string; evaluadoHoy?: string }>();
+  const params = useLocalSearchParams<{
+    alumno: string;
+    nombre: string;
+    grupoNombre?: string;
+    /** 'si' = el servidor ya la tiene · 'telefono' = hay una en la cola esperando señal */
+    evaluadoHoy?: 'si' | 'telefono' | 'no';
+  }>();
+  const { perfil } = useSesion();
+  const usuario = perfil?.usuario ?? '';
 
   // El client_uuid y la fecha se fijan UNA vez al abrir la captura. Si el
-  // entrenador toca "Guardar" dos veces o reintenta tras un error de red, se
-  // manda el mismo client_uuid y el servidor no duplica la evaluación.
+  // entrenador toca "Guardar" dos veces o la evaluación se reenvía desde la
+  // cola, va el mismo client_uuid y el servidor no la duplica.
   const [clientUuid] = useState(() => Crypto.randomUUID());
   const [fecha] = useState(fechaDeHoy);
 
@@ -31,6 +41,8 @@ export default function PantallaCaptura() {
   const [observaciones, setObservaciones] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [problema, setProblema] = useState<Problema | null>(null);
+  // Motivo con el que el servidor rechazó esta evaluación (409, fecha vieja…).
+  const [rechazo, setRechazo] = useState<string | null>(null);
 
   // Solo de referencia mientras se captura: el promedio bueno lo calcula el
   // servidor y es el que se muestra al guardar (regla 1).
@@ -39,18 +51,40 @@ export default function PantallaCaptura() {
   async function guardar() {
     setGuardando(true);
     setProblema(null);
+    const evaluacion: NuevaEvaluacion = {
+      client_uuid: clientUuid,
+      alumno: Number(params.alumno),
+      fecha,
+      pase,
+      recepcion,
+      tiro,
+      observaciones: observaciones.trim(),
+    };
+
+    // 1. Primero al teléfono, siempre (regla 2). Si esto falla no hay nada
+    //    guardado y se avisa; la red ni se intenta.
     try {
-      const guardada = await enviarEvaluacion({
-        client_uuid: clientUuid,
-        alumno: Number(params.alumno),
-        fecha,
-        pase,
-        recepcion,
-        tiro,
-        observaciones: observaciones.trim(),
-      });
-      // replace: al volver desde la confirmación se regresa a la lista, no a
-      // este formulario ya guardado.
+      await guardarEnCola(usuario, evaluacion, params.nombre);
+    } catch (error) {
+      setProblema({ titulo: 'No se pudo guardar en el teléfono', mensaje: (error as Error).message });
+      setGuardando(false);
+      return;
+    }
+
+    // 2. Ya está a salvo. Ahora sí se intenta mandar.
+    let resultado: ResultadoEnvio;
+    try {
+      resultado = await enviarDeLaCola(usuario, evaluacion);
+    } catch {
+      // Falló SQLite al anotar el intento: la evaluación sigue en la cola
+      // como pendiente, así que se trata igual que "sin señal".
+      resultado = { tipo: 'pendiente', sinSenal: false, motivo: '' };
+    }
+
+    // replace: al volver desde la confirmación se regresa a la lista, no a
+    // este formulario ya guardado.
+    if (resultado.tipo === 'enviada') {
+      const { guardada } = resultado;
       router.replace({
         pathname: '/grupos/guardado',
         params: {
@@ -61,10 +95,20 @@ export default function PantallaCaptura() {
           promedio: guardada.promedio.toFixed(1),
         },
       });
-    } catch (error) {
-      setProblema(describirProblema(error));
+    } else if (resultado.tipo === 'pendiente') {
+      router.replace({
+        pathname: '/grupos/sin-conexion',
+        params: { nombre: params.nombre, sinSenal: resultado.sinSenal ? 'si' : 'no' },
+      });
+    } else {
+      setRechazo(resultado.motivo);
       setGuardando(false);
     }
+  }
+
+  async function descartar() {
+    await quitarDeCola(usuario, clientUuid).catch(() => {});
+    router.back();
   }
 
   return (
@@ -81,10 +125,16 @@ export default function PantallaCaptura() {
             <Text style={estilos.subtitulo}>Evaluación de hoy</Text>
           </View>
 
-          {params.evaluadoHoy === 'si' && !problema && (
+          {params.evaluadoHoy === 'si' && !rechazo && (
             <AvisoError
               titulo="Ya aparece evaluado hoy"
               mensaje="Solo se permite una evaluación por alumno y fecha; si la guardas, el servidor la va a rechazar."
+            />
+          )}
+          {params.evaluadoHoy === 'telefono' && !rechazo && (
+            <AvisoError
+              titulo="Ya tiene una evaluación en el teléfono"
+              mensaje="Está guardada esperando señal. Si capturas otra, el servidor rechazará la segunda."
             />
           )}
 
@@ -120,27 +170,23 @@ export default function PantallaCaptura() {
 
           {problema && <AvisoError titulo={problema.titulo} mensaje={problema.mensaje} />}
 
-          <Boton titulo="Guardar" onPress={guardar} cargando={guardando} />
-          {problema?.titulo === TITULO_CONFLICTO && (
-            <Boton titulo="Volver a la lista" variante="contorno" onPress={() => router.back()} />
+          {rechazo ? (
+            // Reintentar daría el mismo "no": el entrenador decide qué hacer.
+            <>
+              <AvisoError titulo="El servidor rechazó la evaluación" mensaje={rechazo} />
+              <Text style={estilos.nota}>
+                Quedó en la pestaña Sincronizar como rechazada. Puedes descartarla ahora o revisarla después.
+              </Text>
+              <Boton titulo="Descartar evaluación" onPress={descartar} />
+              <Boton titulo="Dejarla en Sincronizar" variante="contorno" onPress={() => router.back()} />
+            </>
+          ) : (
+            <Boton titulo="Guardar" onPress={guardar} cargando={guardando} />
           )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-}
-
-const TITULO_CONFLICTO = 'Este alumno ya tiene evaluación de hoy';
-
-/** Siempre se muestra el texto del servidor; el título solo da contexto. */
-function describirProblema(error: unknown): Problema {
-  if (!(error instanceof ErrorApi)) {
-    return { titulo: 'No se guardó', mensaje: 'Ocurrió un error inesperado. Intenta de nuevo.' };
-  }
-  // 409: el servidor dice quién la capturó y de qué fecha.
-  if (error.status === 409) return { titulo: TITULO_CONFLICTO, mensaje: error.message };
-  if (error.status === 0) return { titulo: 'Sin conexión: no se guardó', mensaje: error.message };
-  return { titulo: 'El servidor no aceptó la evaluación', mensaje: error.message };
 }
 
 const estilos = StyleSheet.create({
@@ -176,4 +222,5 @@ const estilos = StyleSheet.create({
     color: Colores.texto,
     textAlignVertical: 'top',
   },
+  nota: { fontSize: 15, color: Colores.textoSuave, lineHeight: 21 },
 });

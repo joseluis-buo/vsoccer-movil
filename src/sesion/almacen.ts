@@ -24,6 +24,8 @@ const LLAVE_REFRESH = 'vs.refresh';
 const LLAVE_PERFIL = 'vs.perfil';
 
 export type Perfil = {
+  /** id del usuario en el servidor; separa la cola de captura de cada entrenador. */
+  usuario: string;
   nombre: string;
   rol: string;
   roles: string[];
@@ -60,13 +62,28 @@ export async function borrarSesion() {
 
 /** true si el token JWT todavía no llega a su fecha de vencimiento (`exp`). */
 export function tokenVigente(token: string) {
+  const contenido = leerContenidoJwt(token);
+  return typeof contenido?.exp === 'number' && contenido.exp * 1000 > Date.now();
+}
+
+/**
+ * El id del usuario que viene dentro del token (`user_id`, lo pone
+ * simplejwt). El login no lo manda aparte. Según la versión de simplejwt
+ * llega como número o como texto; se guarda siempre como texto.
+ */
+export function usuarioDelToken(token: string): string | null {
+  const id = leerContenidoJwt(token)?.user_id;
+  return id === undefined || id === null ? null : String(id);
+}
+
+// El JWT es encabezado.contenido.firma; el contenido es JSON en base64url.
+// Solo se lee: la firma la revisa el servidor, no la app.
+function leerContenidoJwt(token: string): { exp?: number; user_id?: string | number } | null {
   try {
-    // El JWT es encabezado.contenido.firma; el contenido es JSON en base64url.
     let base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
     while (base64.length % 4 !== 0) base64 += '=';
-    const contenido = JSON.parse(atob(base64)) as { exp: number };
-    return contenido.exp * 1000 > Date.now();
+    return JSON.parse(atob(base64));
   } catch {
-    return false;
+    return null;
   }
 }

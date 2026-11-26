@@ -34,6 +34,7 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     'expo-secure-store',
+    'expo-sqlite',
     [
       // 01 · Splash: fondo morado mientras se revisa si hay sesión guardada.
       'expo-splash-screen',

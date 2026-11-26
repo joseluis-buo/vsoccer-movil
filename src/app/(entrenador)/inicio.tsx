@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListaDeGrupos } from '@/components/entrenador/ListaDeGrupos';
+import { TarjetaPendientes } from '@/components/entrenador/TarjetaPendientes';
 import { Colores } from '@/constants/colores';
 import { useSesion } from '@/sesion/SesionContext';
 import { hoyEnTexto } from '@/utils/fechas';
@@ -18,6 +19,7 @@ export default function PantallaInicio() {
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={estilos.contenido}>
+        <TarjetaPendientes />
         <Text style={estilos.seccion}>MIS GRUPOS</Text>
         <ListaDeGrupos />
       </ScrollView>
