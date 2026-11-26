@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { DatosDeSesion } from '@/api/autenticacion';
 import { alTerminarSesion } from '@/api/cliente';
 import { olvidarHistoriales } from '@/api/familia';
+import { borrarCopias } from '@/cola/copiaLocal';
 
 import {
   borrarSesion,
@@ -38,6 +39,7 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     // Si el cliente de la API no logra renovar el token, regresa al login.
     alTerminarSesion(() => {
       olvidarHistoriales();
+      borrarCopias().catch(() => {});
       setPerfil(null);
     });
     restaurarSesion()
@@ -71,6 +73,9 @@ export function SesionProvider({ children }: { children: ReactNode }) {
 
   async function cerrarSesion() {
     olvidarHistoriales();
+    // Las listas guardadas para trabajar sin señal se borran; la cola de
+    // evaluaciones no. Si SQLite falla, la sesión se cierra de todos modos.
+    await borrarCopias().catch(() => {});
     await borrarSesion();
     setPerfil(null);
   }

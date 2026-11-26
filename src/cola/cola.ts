@@ -1,6 +1,6 @@
-import * as SQLite from 'expo-sqlite';
-
 import type { NuevaEvaluacion } from '@/api/entrenador';
+
+import { baseDeDatos } from './baseDeDatos';
 
 // Cola de captura sin conexión (regla 2 de CLAUDE.md). Cada evaluación se
 // escribe aquí ANTES de intentar mandarla al servidor, y solo se borra cuando
@@ -24,41 +24,6 @@ export type EvaluacionEnCola = NuevaEvaluacion & {
   ultimo_error: string | null;
   creada: string; // fecha y hora del teléfono, ISO
 };
-
-const ESQUEMA = `
-  CREATE TABLE IF NOT EXISTS cola_evaluaciones (
-    client_uuid   TEXT PRIMARY KEY NOT NULL,
-    usuario       TEXT NOT NULL,
-    alumno        INTEGER NOT NULL,
-    alumno_nombre TEXT NOT NULL,
-    fecha         TEXT NOT NULL,
-    pase          INTEGER NOT NULL,
-    recepcion     INTEGER NOT NULL,
-    tiro          INTEGER NOT NULL,
-    observaciones TEXT NOT NULL DEFAULT '',
-    estado        TEXT NOT NULL DEFAULT 'pendiente',
-    intentos      INTEGER NOT NULL DEFAULT 0,
-    ultimo_error  TEXT,
-    creada        TEXT NOT NULL
-  );
-`;
-
-// La base se abre una sola vez y todos comparten la misma conexión.
-let conexion: Promise<SQLite.SQLiteDatabase> | null = null;
-
-function baseDeDatos() {
-  conexion ??= SQLite.openDatabaseAsync('vivasoccer.db')
-    .then(async (db) => {
-      await db.execAsync(ESQUEMA);
-      return db;
-    })
-    .catch((error) => {
-      // Si falla al abrir, el siguiente intento vuelve a probar.
-      conexion = null;
-      throw error;
-    });
-  return conexion;
-}
 
 /**
  * Guarda (o vuelve a guardar) una evaluación como pendiente. Si el mismo

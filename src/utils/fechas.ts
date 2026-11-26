@@ -22,10 +22,22 @@ export function formatearFechaHora(fechaHora: string) {
  * 4 o 5 de la tarde ya sería "mañana" y el servidor la rechazaría por futura.
  */
 export function fechaDeHoy() {
-  const hoy = new Date();
-  const mes = String(hoy.getMonth() + 1).padStart(2, '0');
-  const dia = String(hoy.getDate()).padStart(2, '0');
-  return `${hoy.getFullYear()}-${mes}-${dia}`;
+  return fechaLocal(new Date());
+}
+
+/** El día de `momento` en la hora del teléfono, como "2026-11-11". */
+export function fechaLocal(momento: Date) {
+  const mes = String(momento.getMonth() + 1).padStart(2, '0');
+  const dia = String(momento.getDate()).padStart(2, '0');
+  return `${momento.getFullYear()}-${mes}-${dia}`;
+}
+
+/** Fecha y hora ISO → "hoy a las 10:42" o "25 nov a las 18:05", en hora local. */
+export function formatearMomento(fechaHora: string) {
+  const momento = new Date(fechaHora);
+  const hora = `${momento.getHours()}:${String(momento.getMinutes()).padStart(2, '0')}`;
+  const dia = fechaLocal(momento) === fechaDeHoy() ? 'hoy' : formatearFecha(fechaLocal(momento), false);
+  return `${dia} a las ${hora}`;
 }
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];

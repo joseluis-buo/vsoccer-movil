@@ -5,13 +5,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { pedirAlumnosDelGrupo, type AlumnoDelGrupo } from '@/api/entrenador';
 import { useDatos } from '@/api/useDatos';
+import { conCopiaLocal, type ConCopia } from '@/cola/copiaLocal';
 import { useCola } from '@/cola/useCola';
+import { AvisoCopiaLocal } from '@/components/AvisoCopiaLocal';
 import { BotonRegresar } from '@/components/BotonRegresar';
 import { ListaDeGrupos } from '@/components/entrenador/ListaDeGrupos';
 import { FilaAlumno } from '@/components/entrenador/FilaAlumno';
 import { Cargando, ErrorConReintento, Vacio } from '@/components/Estados';
 import { Colores } from '@/constants/colores';
-import { fechaDeHoy } from '@/utils/fechas';
+import { fechaDeHoy, fechaLocal } from '@/utils/fechas';
 
 // 05 · Alumnos del grupo. Se abre con ?grupo=MINI-LUN_MIE desde el Inicio.
 // Si se entra por la pestaña sin elegir grupo, primero se muestran los grupos.
@@ -32,11 +34,15 @@ export default function PantallaAlumnosDelGrupo() {
 }
 
 function AlumnosDelGrupo({ grupo, nombre }: { grupo: string; nombre: string }) {
-  const { estado, reintentar } = useDatos(() => pedirAlumnosDelGrupo(grupo), grupo);
+  const { usuario, pendientes } = useCola();
+  // Sin señal se usa la última lista de este grupo guardada en el teléfono.
+  const { estado, reintentar } = useDatos(
+    () => conCopiaLocal(usuario, `alumnos?grupo=${grupo}`, () => pedirAlumnosDelGrupo(grupo)),
+    grupo,
+  );
   const [busqueda, setBusqueda] = useState('');
   // Alumnos con una evaluación DE HOY esperando señal en la cola del teléfono.
   // Una de otro día no cuenta: hoy todavía le falta la suya.
-  const { pendientes } = useCola();
   const hoy = fechaDeHoy();
   const enTelefono = new Set(pendientes.filter((p) => p.fecha === hoy).map((p) => p.alumno));
 
@@ -65,7 +71,8 @@ function AlumnosDelGrupo({ grupo, nombre }: { grupo: string; nombre: string }) {
     });
   }
 
-  const alumnos = estado.tipo === 'listo' ? estado.datos : [];
+  const copia = estado.tipo === 'listo' ? estado.datos : null;
+  const alumnos = copia ? marcasVigentes(copia, hoy) : [];
   const visibles = alumnos.filter((a) => sinAcentos(a.nombre).includes(sinAcentos(busqueda)));
   const evaluados = alumnos.filter((a) => a.evaluado_hoy).length;
   const guardadosEnTelefono = alumnos.filter((a) => !a.evaluado_hoy && enTelefono.has(a.id)).length;
@@ -83,6 +90,8 @@ function AlumnosDelGrupo({ grupo, nombre }: { grupo: string; nombre: string }) {
             </Text>
           )}
         </View>
+
+        {copia?.guardada && <AvisoCopiaLocal guardada={copia.guardada} onRecargar={reintentar} />}
 
         <TextInput
           value={busqueda}
@@ -112,6 +121,15 @@ function AlumnosDelGrupo({ grupo, nombre }: { grupo: string; nombre: string }) {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+/**
+ * Una lista guardada otro día trae el "Evaluado" de ESE día: hoy no vale.
+ * Se quita la marca y, cuando vuelva la señal, el servidor pone la de hoy.
+ */
+function marcasVigentes({ datos, guardada }: ConCopia<AlumnoDelGrupo[]>, hoy: string) {
+  if (!guardada || fechaLocal(new Date(guardada)) === hoy) return datos;
+  return datos.map((alumno) => ({ ...alumno, evaluado_hoy: false, evaluacion_hoy: null }));
 }
 
 /** Para que "sofia" encuentre a "Sofía": minúsculas y sin acentos. */
