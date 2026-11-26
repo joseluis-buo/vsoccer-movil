@@ -25,6 +25,23 @@ export type EvaluacionEnCola = NuevaEvaluacion & {
   creada: string; // fecha y hora del teléfono, ISO
 };
 
+// Las pantallas que muestran la cola (Inicio, Sincronizar, la lista de
+// alumnos) se registran aquí para enterarse cuando cambia, aunque el cambio
+// venga del envío automático y no de algo que tocó el entrenador.
+const oyentes = new Set<() => void>();
+
+/** Registra una función que se llama cada vez que cambia la cola. Regresa cómo darse de baja. */
+export function alCambiarLaCola(oyente: () => void) {
+  oyentes.add(oyente);
+  return () => {
+    oyentes.delete(oyente);
+  };
+}
+
+function avisarCambio() {
+  oyentes.forEach((oyente) => oyente());
+}
+
 /**
  * Guarda (o vuelve a guardar) una evaluación como pendiente. Si el mismo
  * client_uuid ya estaba, se actualizan sus datos en lugar de duplicarla.
@@ -53,6 +70,7 @@ export async function guardarEnCola(usuario: string, evaluacion: NuevaEvaluacion
     evaluacion.observaciones,
     new Date().toISOString(),
   );
+  avisarCambio();
 }
 
 /** Toda la cola de ESTE usuario, la más vieja primero. La de otros no se ve. */
@@ -75,6 +93,7 @@ export async function anotarIntento(clientUuid: string, estado: EstadoEnCola, er
     error,
     clientUuid,
   );
+  avisarCambio();
 }
 
 /**
@@ -84,4 +103,5 @@ export async function anotarIntento(clientUuid: string, estado: EstadoEnCola, er
 export async function quitarDeCola(usuario: string, clientUuid: string) {
   const db = await baseDeDatos();
   await db.runAsync('DELETE FROM cola_evaluaciones WHERE client_uuid = ? AND usuario = ?', clientUuid, usuario);
+  avisarCambio();
 }

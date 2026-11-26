@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MAX_OBSERVACIONES, type NuevaEvaluacion } from '@/api/entrenador';
 import { guardarEnCola, quitarDeCola } from '@/cola/cola';
-import { enviarDeLaCola, type ResultadoEnvio } from '@/cola/envio';
+import { enviarDeLaCola, enviarPendientes, type ResultadoEnvio } from '@/cola/envio';
 import { AvisoError } from '@/components/AvisoError';
 import { Boton } from '@/components/Boton';
 import { BotonRegresar } from '@/components/BotonRegresar';
@@ -84,6 +84,8 @@ export default function PantallaCaptura() {
     // replace: al volver desde la confirmación se regresa a la lista, no a
     // este formulario ya guardado.
     if (resultado.tipo === 'enviada') {
+      // Si esta llegó, hay señal: se aprovecha para mandar las que esperaban.
+      enviarPendientes(usuario).catch(() => {});
       const { guardada } = resultado;
       router.replace({
         pathname: '/grupos/guardado',

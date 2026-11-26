@@ -1,5 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -45,6 +45,16 @@ function AlumnosDelGrupo({ grupo, nombre }: { grupo: string; nombre: string }) {
   // Una de otro día no cuenta: hoy todavía le falta la suya.
   const hoy = fechaDeHoy();
   const enTelefono = new Set(pendientes.filter((p) => p.fecha === hoy).map((p) => p.alumno));
+
+  // Si la cola se envió sola mientras se ve esta lista, las marcas "En
+  // teléfono" desaparecen; se vuelve a pedir la lista para que el servidor
+  // ponga "Evaluado" en su lugar.
+  const cuantosEnTelefono = enTelefono.size;
+  const antes = useRef(cuantosEnTelefono);
+  useEffect(() => {
+    if (cuantosEnTelefono < antes.current) reintentar();
+    antes.current = cuantosEnTelefono;
+  }, [cuantosEnTelefono, reintentar]);
 
   // Al regresar de una captura se vuelve a pedir la lista para que la marca
   // "Evaluado" la ponga el servidor. La primera vez no: ya la pidió useDatos.

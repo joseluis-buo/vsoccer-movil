@@ -1,10 +1,15 @@
 import { Tabs } from 'expo-router/js-tabs';
 
+import { useEnvioAutomatico } from '@/cola/useEnvioAutomatico';
 import { IconoPestana } from '@/components/IconoPestana';
 import { Colores } from '@/constants/colores';
 
 // Modo Entrenador: acento morado.
 export default function LayoutEntrenador() {
+  // Mientras el entrenador esté en su modo, la cola se envía sola al
+  // recuperar la señal.
+  useEnvioAutomatico();
+
   return (
     <Tabs
       screenOptions={{

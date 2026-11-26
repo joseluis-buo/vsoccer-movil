@@ -1,6 +1,7 @@
 import { ErrorApi } from '@/api/cliente';
 
 import { baseDeDatos } from './baseDeDatos';
+import { enviarPendientes } from './envio';
 
 // Copia local de lo que el entrenador necesita para capturar sin señal: sus
 // grupos y los alumnos de cada grupo. Cada vez que la API responde, se guarda
@@ -26,6 +27,9 @@ export async function conCopiaLocal<T>(usuario: string, clave: string, pedir: ()
     const datos = await pedir();
     // Si SQLite falla, los datos del servidor igual sirven: no se interrumpe.
     await guardarCopia(usuario, clave, datos).catch(() => {});
+    // El servidor contestó: buen momento para mandar lo que esté en la cola
+    // (cubre el caso de "había red, pero el servidor estaba caído").
+    enviarPendientes(usuario).catch(() => {});
     return { datos, guardada: null };
   } catch (error) {
     if (!(error instanceof ErrorApi && error.status === 0)) throw error;

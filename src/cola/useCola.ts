@@ -1,14 +1,15 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useSesion } from '@/sesion/SesionContext';
 
-import { leerCola, type EvaluacionEnCola } from './cola';
+import { alCambiarLaCola, leerCola, type EvaluacionEnCola } from './cola';
 
 /**
  * La cola del entrenador que tiene la sesión abierta. Se vuelve a leer cada
- * vez que la pantalla aparece (p. ej. al regresar de una captura) y cuando
- * la pantalla llama a `recargar`.
+ * vez que la pantalla aparece (p. ej. al regresar de una captura), cada vez
+ * que la cola cambia (p. ej. el envío automático la vació) y cuando la
+ * pantalla llama a `recargar`.
  */
 export function useCola() {
   const { perfil } = useSesion();
@@ -27,6 +28,7 @@ export function useCola() {
   }, [usuario]);
 
   useFocusEffect(recargar);
+  useEffect(() => alCambiarLaCola(recargar), [recargar]);
 
   const pendientes = filas.filter((fila) => fila.estado === 'pendiente');
   const rechazadas = filas.filter((fila) => fila.estado === 'rechazada');
