@@ -1,7 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MAX_OBSERVACIONES, type NuevaEvaluacion } from '@/api/entrenador';
@@ -122,9 +122,25 @@ export default function PantallaCaptura() {
             <Text style={estilos.fecha}>{formatearFecha(fecha)}</Text>
           </View>
 
-          <View>
-            <Text style={estilos.nombre}>{params.nombre}</Text>
-            <Text style={estilos.subtitulo}>Evaluación de hoy</Text>
+          <View style={estilos.filaArriba}>
+            <View style={estilos.encabezado}>
+              <Text style={estilos.nombre}>{params.nombre}</Text>
+              <Text style={estilos.subtitulo}>Evaluación de hoy</Text>
+            </View>
+            {/* 08 · Ficha: lo que lleva el alumno antes de calificarlo hoy. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Ver historial de ${params.nombre}`}
+              hitSlop={8}
+              onPress={() =>
+                router.push({
+                  pathname: '/grupos/alumno/[id]',
+                  params: { id: params.alumno, nombre: params.nombre, grupoNombre: params.grupoNombre },
+                })
+              }
+              style={({ pressed }) => [estilos.historial, pressed && estilos.presionado]}>
+              <Text style={estilos.historialTexto}>Ver historial</Text>
+            </Pressable>
           </View>
 
           {params.evaluadoHoy === 'si' && !rechazo && (
@@ -198,6 +214,18 @@ const estilos = StyleSheet.create({
   fecha: { fontSize: 15, color: Colores.textoSuave, fontWeight: '600' },
   nombre: { fontSize: 26, fontWeight: '900', color: Colores.texto },
   subtitulo: { fontSize: 16, color: Colores.textoSuave },
+  encabezado: { flex: 1 },
+  historial: {
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: Colores.morado,
+    backgroundColor: Colores.blanco,
+  },
+  historialTexto: { fontSize: 15, fontWeight: '800', color: Colores.morado },
+  presionado: { opacity: 0.8 },
   promedio: {
     flexDirection: 'row',
     alignItems: 'center',

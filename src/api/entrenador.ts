@@ -1,4 +1,5 @@
 import { peticion } from './cliente';
+import type { Historial } from './familia';
 
 // Endpoints del modo Entrenador. Los tipos copian lo que responde la API.
 
@@ -52,4 +53,12 @@ export function pedirAlumnosDelGrupo(grupo: string) {
 
 export function enviarEvaluacion(evaluacion: NuevaEvaluacion) {
   return peticion<EvaluacionGuardada>('evaluaciones/', { metodo: 'POST', cuerpo: evaluacion });
+}
+
+/**
+ * Histórico de un alumno de sus grupos: el mismo endpoint que usa la familia.
+ * Si el alumno no es de sus grupos, la API responde 404.
+ */
+export function pedirHistorialDelAlumno(alumnoId: number) {
+  return peticion<Historial>(`alumnos/${alumnoId}/evaluaciones/`);
 }
