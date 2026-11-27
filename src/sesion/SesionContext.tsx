@@ -62,8 +62,8 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     setPerfil(nuevo);
   }
 
-  // Lista para cuando exista la pantalla: un entrenador que también es papá
-  // puede pasar al modo Familia sin volver a iniciar sesión.
+  // Un entrenador que también es papá pasa al modo Familia (y de regreso) sin
+  // volver a iniciar sesión. Lo usa BotonCambiarModo, en las pantallas de Perfil.
   async function cambiarModo(modo: Modo) {
     if (!perfil || !modosDisponibles(perfil.roles).includes(modo)) return;
     const nuevo = { ...perfil, modo };
