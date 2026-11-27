@@ -3,8 +3,9 @@ import { ErrorApi } from '@/api/cliente';
 import { baseDeDatos } from './baseDeDatos';
 import { enviarPendientes } from './envio';
 
-// Copia local de lo que el entrenador necesita para capturar sin señal: sus
-// grupos y los alumnos de cada grupo. Cada vez que la API responde, se guarda
+// Copia local para abrir pantallas sin señal: los grupos del entrenador, los
+// alumnos de cada grupo, la ficha (histórico) de cada alumno que ya abrió, y
+// en modo Familia la lista de hijos. Cada vez que la API responde, se guarda
 // la respuesta tal cual (JSON). Si después no hay red, se muestra esa copia
 // avisando de cuándo es. No es otra fuente de verdad: en cuanto hay señal,
 // manda otra vez el servidor.
@@ -20,7 +21,8 @@ export type ConCopia<T> = {
  * (status 0) usa la copia. Un 403 o un 500 no: ahí el servidor sí contestó y
  * su respuesta es la que vale. Sin copia guardada, el error pasa igual.
  *
- * `clave` identifica la lista, p. ej. "mis-grupos" o "alumnos?grupo=MINI-LUN_MIE".
+ * `clave` identifica la lista, p. ej. "mis-grupos", "alumnos?grupo=MINI-LUN_MIE",
+ * "historial?alumno=12" o "mis-hijos".
  */
 export async function conCopiaLocal<T>(usuario: string, clave: string, pedir: () => Promise<T>): Promise<ConCopia<T>> {
   try {

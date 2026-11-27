@@ -2,8 +2,8 @@ import * as SQLite from 'expo-sqlite';
 
 // La base local del teléfono. Tiene dos tablas:
 //   cola_evaluaciones — capturas que todavía no llegan al servidor (cola.ts)
-//   copia_api         — la última lista de grupos y alumnos que mandó la API,
-//                       para poder abrirlas sin señal (copiaLocal.ts)
+//   copia_api         — la última respuesta de la API de cada lista (grupos,
+//                       alumnos, fichas, hijos), para abrirlas sin señal (copiaLocal.ts)
 const ESQUEMA = `
   CREATE TABLE IF NOT EXISTS cola_evaluaciones (
     client_uuid   TEXT PRIMARY KEY NOT NULL,
