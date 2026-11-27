@@ -1,11 +1,14 @@
 import { Tabs } from 'expo-router/js-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconoPestana } from '@/components/IconoPestana';
+import { altoDeLaBarra, IconoPestana } from '@/components/IconoPestana';
 import { Colores } from '@/constants/colores';
 
 // Modo Familia: acento menta. El texto activo va en oscuro porque menta sobre
 // blanco casi no se lee con sol; el ícono sí va en menta, como en el prototipo.
 export default function LayoutFamilia() {
+  const abajo = useSafeAreaInsets().bottom;
+
   return (
     <Tabs
       screenOptions={{
@@ -13,7 +16,7 @@ export default function LayoutFamilia() {
         tabBarActiveTintColor: Colores.texto,
         tabBarInactiveTintColor: Colores.textoSuave,
         tabBarLabelStyle: { fontSize: 13, fontWeight: '700' },
-        tabBarStyle: { backgroundColor: Colores.blanco, borderTopColor: Colores.menta, borderTopWidth: 2 },
+        tabBarStyle: { ...altoDeLaBarra(abajo), backgroundColor: Colores.blanco, borderTopColor: Colores.menta, borderTopWidth: 2 },
       }}>
       <Tabs.Screen
         name="hijos"

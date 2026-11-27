@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router/js-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useEnvioAutomatico } from '@/cola/useEnvioAutomatico';
-import { IconoPestana } from '@/components/IconoPestana';
+import { altoDeLaBarra, IconoPestana } from '@/components/IconoPestana';
 import { Colores } from '@/constants/colores';
 
 // Modo Entrenador: acento morado.
@@ -10,6 +11,8 @@ export default function LayoutEntrenador() {
   // recuperar la señal.
   useEnvioAutomatico();
 
+  const abajo = useSafeAreaInsets().bottom;
+
   return (
     <Tabs
       screenOptions={{
@@ -17,7 +20,7 @@ export default function LayoutEntrenador() {
         tabBarActiveTintColor: Colores.morado,
         tabBarInactiveTintColor: Colores.textoSuave,
         tabBarLabelStyle: { fontSize: 13, fontWeight: '700' },
-        tabBarStyle: { backgroundColor: Colores.blanco },
+        tabBarStyle: { ...altoDeLaBarra(abajo), backgroundColor: Colores.blanco },
       }}>
       <Tabs.Screen
         name="inicio"

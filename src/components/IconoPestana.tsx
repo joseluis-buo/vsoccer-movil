@@ -21,3 +21,12 @@ export function IconoPestana({ forma, color, activo }: Props) {
     />
   );
 }
+
+/**
+ * Alto de la barra de pestañas. La de fábrica (49 px) corta la etiqueta bajo
+ * el ícono; aquí cabe completa. `abajo` es el margen seguro del teléfono
+ * (la rayita del iPhone), que se suma para no taparla.
+ */
+export function altoDeLaBarra(abajo: number) {
+  return { height: 66 + abajo, paddingTop: 2, paddingBottom: 4 + abajo };
+}
